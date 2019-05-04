@@ -61,6 +61,11 @@ using RPlidarDriver =  rp::standalone::rplidar::RPlidarDriver;
 namespace rplidar_ros
 {
 
+constexpr double deg_2_rad(constexpr double x)
+{
+  return x * M_PI / 180.0;
+}
+
 class rplidar_node : public rclcpp::Node
 {
 public:
@@ -70,6 +75,8 @@ public:
   void publish_scan();
 
 private:
+  bool getRPLIDARDeviceInfo();
+
   /* parameters */
   std::string channel_type_;
   std::string tcp_ip_;
@@ -88,6 +95,8 @@ private:
   size_t m_scan_count = 0;
   const float max_distance = 8.0f;
   const fload min_distance = 0.15f;
+  constexpr angle_min = deg_2_rad(0);
+  constexpr angle_max = deg_2_rad(359);
 };
 
 }  // namespace rplidar_ros

@@ -6,6 +6,7 @@
  *  Copyright (c) 2014 - 2016 Shanghai Slamtec Co., Ltd.
  *  http://www.slamtec.com
  *
+ *  Copyright (c) 2019 Hunter L. Allen
  */
 /*
  * Redistribution and use in source and binary forms, with or without
@@ -66,7 +67,6 @@ rplidar_node::rplidar_node(rclcpp::Node::options options)
   m_drv = (channel_type == "tcp")
     ? RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_TCP)
     : RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_SERIALPORT);
-
 }
 
 void rplidar_node::publish_scan()
@@ -79,8 +79,9 @@ void rplidar_node::publish_scan()
   scan_msg.header.frame_id = frame_id_;
   scan_count++;
 
-  bool reversed = (angle_max > angle_min);
-  if ( reversed ) {
+  constexpr bool reversed = (angle_max > angle_min);
+  if constexpr (reversed) {
+    /* NOTE(allenh1): the other case seems impossible? */
     scan_msg.angle_min =  M_PI - angle_max;
     scan_msg.angle_max =  M_PI - angle_min;
   } else {
@@ -119,6 +120,35 @@ void rplidar_node::publish_scan()
   }
 
   pub->publish(scan_msg);
+}
+
+
+bool rplidar_node::getRPLIDARDeviceInfo()
+{
+  u_result op_result;
+  rplidar_response_device_info_t devinfo;
+
+  op_result = m_drv->getDeviceInfo(devinfo);
+  if (IS_FAIL(op_result)) {
+    if (op_result == RESULT_OPERATION_TIMEOUT) {
+      RCLCPP_ERROR(this->get_logger(), "Error, operation time out. RESULT_OPERATION_TIMEOUT!");
+    } else {
+      RCLCPP_ERROR(this->get_logger(), "Error, unexpected error, code: %x", op_result);
+    }
+    return false;
+  }
+
+  // print out the device serial number, firmware and hardware version number..
+  std::string serial_no{"RPLIDAR S/N: "};
+  for (int pos = 0; pos < 16 ;++pos) {
+    char buff[3];
+    snprintf(buff, sizeof(buff), "%02X", devinfo.serialnum[pos]);
+    serial_no += buff;
+  }
+  RCLCPP_INFO(this->get_logger(), "%s", serial_no.c_str());
+  RCLCPP_INFO(this->get_logger(), "Firmware Ver: %d.%02d", devinfo.firmware_version>>8, devinfo.firmware_version & 0xFF);
+  RCLCPP_INFO(this->get_logger(), "Hardware Rev: %d", static_cast<int>(devinfo.hardware_version));
+  return true;
 }
 
 }  // namespace rplidar_ros
