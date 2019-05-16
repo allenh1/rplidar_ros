@@ -252,22 +252,23 @@ int main(int argc, char * argv[]) {
     }
 
     if(channel_type == "tcp"){
-        // make connection...
-        if (IS_FAIL(drv->connect(tcp_ip.c_str(), (_u32)tcp_port))) {
-            ROS_ERROR("Error, cannot bind to the specified serial port %s.",serial_port.c_str());
-            RPlidarDriver::DisposeDriver(drv);
-            return -1;
-        }
+      ROS_INFO("RPLIDAR connecting to TCP port: %s:%d", tcp_ip.c_str(), tcp_port);
+      // make connection...
+      if (IS_FAIL(drv->connect(tcp_ip.c_str(), (_u32)tcp_port))) {
+        ROS_ERROR("Error, cannot bind to the specified TCP port %s:%d.", tcp_ip.c_str(), tcp_port);
+        RPlidarDriver::DisposeDriver(drv);
+        return -1;
+      }
 
     }
     else{
-       // make connection...
-        if (IS_FAIL(drv->connect(serial_port.c_str(), (_u32)serial_baudrate))) {
-            ROS_ERROR("Error, cannot bind to the specified serial port %s.",serial_port.c_str());
-            RPlidarDriver::DisposeDriver(drv);
-            return -1;
-        }
-
+      ROS_INFO("RPLIDAR connecting to serial port: %s", serial_port.c_str());
+      // make connection...
+      if (IS_FAIL(drv->connect(serial_port.c_str(), (_u32)serial_baudrate))) {
+        ROS_ERROR("Error, cannot bind to the specified serial port %s.", serial_port.c_str());
+        RPlidarDriver::DisposeDriver(drv);
+        return -1;
+      }
     }
     
     // get rplidar device info
