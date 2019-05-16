@@ -222,18 +222,16 @@ int main(int argc, char * argv[]) {
     /* scan publisher */
     auto scan_pub = node->create_publisher<sensor_msgs::msg::LaserScan>("scan", qos);
 
-    /* set parameters */
-    node->get_parameter_or("channel_type", channel_type, std::string("serial"));
-    node->get_parameter_or("tcp_ip", tcp_ip, std::string("192.168.0.7"));
-    node->get_parameter_or("tcp_port", tcp_port, 20108);
-    node->get_parameter_or("serial_port", serial_port, std::string("/dev/ttyUSB0"));
-    node->get_parameter_or("serial_baudrate", serial_baudrate, 115200);
-    node->get_parameter_or("frame_id", frame_id, std::string("laser_frame"));
-    node->get_parameter_or("inverted", inverted, false);
-    node->get_parameter_or("angle_compensate", angle_compensate, false);
-    node->get_parameter_or("scan_mode", scan_mode, std::string());
+    channel_type = node->declare_parameter("channel_type", std::string("serial"));
+    tcp_ip = node->declare_parameter("tcp_ip", std::string("192.168.0.7"));
+    serial_port = node->declare_parameter("serial_port", std::string("/dev/ttyUSB0"));
+    serial_baudrate = node->declare_parameter("serial_baudrate", 115200);
+    frame_id = node->declare_parameter("frame_id", std::string("lidar_link"));
+    inverted = node->declare_parameter("inverted", false);
+    angle_compensate = node->declare_parameter("angle_compensate", false);
+    scan_mode = node->declare_parameter("scan_mode", std::string(""));
 
-    ROS_INFO("RPLIDAR running on ROS package rplidar_ros. SDK Version:"RPLIDAR_SDK_VERSION"");
+    ROS_INFO("RPLIDAR running on ROS package rplidar_ros. SDK Version:" RPLIDAR_SDK_VERSION "");
 
     u_result     op_result;
 
@@ -245,7 +243,7 @@ int main(int argc, char * argv[]) {
         drv = RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_SERIALPORT);
     }
 
-    
+
     if (!drv) {
         ROS_ERROR("Create Driver fail, exit");
         return -2;
@@ -270,7 +268,7 @@ int main(int argc, char * argv[]) {
         return -1;
       }
     }
-    
+
     // get rplidar device info
     if (!getRPLIDARDeviceInfo(drv)) {
         return -1;
