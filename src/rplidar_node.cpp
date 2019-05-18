@@ -1,5 +1,5 @@
 /*
- *  RPLIDAR ROS NODE
+ *  Rplidar ROS NODE
  *
  *  Copyright (c) 2009 - 2014 RoboPeak Team
  *  http://www.robopeak.com
@@ -38,44 +38,51 @@
 namespace rplidar_ros
 {
 
-rplidar_node::rplidar_node(rclcpp::Node::options options)
-  : rclcpp::Node(options, "rplidar_node")
+rplidar_node::rplidar_node(rclcpp::NodeOptions options)
+  : rclcpp::Node("rplidar_node", options)
 {
   /* set parameters */
-  node->get_parameter_or("channel_type", channel_type_, std::string("serial"));
-  node->get_parameter_or("tcp_ip", tcp_ip_, std::string("192.168.0.7"));
-  node->get_parameter_or("tcp_port", tcp_port_, 20108);
-  node->get_parameter_or("serial_port", serial_port_, std::string("/dev/ttyUSB0"));
-  node->get_parameter_or("serial_baudrate", serial_baudrate_, 115200);
-  node->get_parameter_or("frame_id", frame_id_, std::string("laser_frame"));
-  node->get_parameter_or("inverted", inverted_, false);
-  node->get_parameter_or("angle_compensate", angle_compensate_, false);
-  node->get_parameter_or("scan_mode", scan_mode_, std::string());
+  this->get_parameter_or("channel_type", channel_type_, std::string("serial"));
+  this->get_parameter_or("tcp_ip", tcp_ip_, std::string("192.168.0.7"));
+  this->get_parameter_or("tcp_port", tcp_port_, 20108);
+  this->get_parameter_or("serial_port", serial_port_, std::string("/dev/ttyUSB0"));
+  this->get_parameter_or("serial_baudrate", serial_baudrate_, 115200);
+  this->get_parameter_or("frame_id", frame_id_, std::string("laser_frame"));
+  this->get_parameter_or("inverted", inverted_, false);
+  this->get_parameter_or("angle_compensate", angle_compensate_, false);
+  this->get_parameter_or("scan_mode", scan_mode_, std::string());
+  this->get_parameter_or("topic_name", topic_name_, std::string("scan"));
 
   /* set QoS settings */
   rmw_qos_profile_t qos = rmw_qos_profile_default;
   qos.depth = 1;
   qos.durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
 
+  /* connect to ROS clock */
+  rclcpp::TimeSource timesource;
+  m_clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
+  timesource.attachClock(m_clock);
+
   /* create the publisher for "/scan" */
-  m_publisher = this->create_publisher<LaserScan>("scan", qos);
+  m_publisher = this->create_publisher<LaserScan>(topic_name_, qos);
 
   RCLCPP_INFO(this->get_logger(),
     "RPLIDAR running on ROS 2 package rplidar_ros. SDK Version: '%s'", RPLIDAR_SDK_VERSION);
 
   /* initialize SDK */
-  m_drv = (channel_type == "tcp")
+  m_drv = (channel_type_ == "tcp")
     ? RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_TCP)
     : RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_SERIALPORT);
 }
 
-void rplidar_node::publish_scan()
+void rplidar_node::publish_scan(
+  const double scan_time, const ResponseNodeArray & nodes, size_t node_count)
 {
   static size_t scan_count = 0;
   sensor_msgs::msg::LaserScan scan_msg;
 
   /* NOTE(allenh1): time was passed in as a parameter before */
-  scan_msg.header.stamp = clock->now();
+  scan_msg.header.stamp = m_clock->now();
   scan_msg.header.frame_id = frame_id_;
   scan_count++;
 
@@ -119,7 +126,7 @@ void rplidar_node::publish_scan()
     }
   }
 
-  pub->publish(scan_msg);
+  m_publisher->publish(scan_msg);
 }
 
 

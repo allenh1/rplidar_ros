@@ -56,23 +56,31 @@ namespace
 using LaserScan = sensor_msgs::msg::LaserScan;
 using LaserScanPub = rclcpp::Publisher<LaserScan>::SharedPtr;
 using RPlidarDriver =  rp::standalone::rplidar::RPlidarDriver;
+using Clock = rclcpp::Clock::SharedPtr;
+using ResponseNodeArray = std::unique_ptr<rplidar_response_measurement_node_hq_t[]>;
 }
 
 namespace rplidar_ros
 {
 
-constexpr double deg_2_rad(constexpr double x)
+constexpr double deg_2_rad(double x)
 {
   return x * M_PI / 180.0;
+}
+
+namespace
+{
+constexpr double angle_min = deg_2_rad(0);
+constexpr double angle_max = deg_2_rad(359);
 }
 
 class rplidar_node : public rclcpp::Node
 {
 public:
-  explicit rplidar_node(rclcpp::Node::options options);
+  explicit rplidar_node(rclcpp::NodeOptions options);
   virtual ~rplidar_node();
 
-  void publish_scan();
+  void publish_scan(const double scan_time, const ResponseNodeArray & nodes, size_t node_count);
 
 private:
   bool getRPLIDARDeviceInfo();
@@ -81,6 +89,7 @@ private:
   std::string channel_type_;
   std::string tcp_ip_;
   std::string serial_port_;
+  std::string topic_name_;
   int tcp_port_;
   int serial_baudrate_;
   std::string frame_id_;
@@ -92,11 +101,11 @@ private:
   LaserScanPub m_publisher;
   /* SDK Pointer */
   RPlidarDriver * m_drv = nullptr;
+  /* Clock */
+  Clock m_clock;
   size_t m_scan_count = 0;
   const float max_distance = 8.0f;
-  const fload min_distance = 0.15f;
-  constexpr angle_min = deg_2_rad(0);
-  constexpr angle_max = deg_2_rad(359);
+  const float min_distance = 0.15f;
 };
 
 }  // namespace rplidar_ros
