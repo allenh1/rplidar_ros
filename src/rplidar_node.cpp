@@ -53,6 +53,59 @@ rplidar_node::rplidar_node(rclcpp::NodeOptions options)
   this->get_parameter_or("scan_mode", scan_mode_, std::string());
   this->get_parameter_or("topic_name", topic_name_, std::string("scan"));
 
+  RCLCPP_INFO(this->get_logger(),
+    "RPLIDAR running on ROS 2 package rplidar_ros. SDK Version: '%s'", RPLIDAR_SDK_VERSION);
+
+  /* initialize SDK */
+  m_drv = (channel_type_ == "tcp")
+    ? RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_TCP)
+    : RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_SERIALPORT);
+
+  if (nullptr == m_drv) {
+    /* don't start spinning without a driver object */
+    RCLCPP_ERROR(this->get_logger(), "Failed to construct driver");
+    return;
+  }
+
+  if(channel_type_ == "tcp"){
+    // make connection...
+    if (IS_FAIL(m_drv->connect(tcp_ip_.c_str(), (_u32)tcp_port_))) {
+      RCLCPP_ERROR(this->get_logger(),
+        "Error, cannot bind to the specified TCP host '%s:%ud'",
+        tcp_ip_.c_str(), static_cast<unsigned int>(tcp_port_));
+      RPlidarDriver::DisposeDriver(m_drv);
+      return;
+    }
+  }
+  else{
+    // make connection...
+    if (IS_FAIL(m_drv->connect(serial_port_.c_str(), (_u32)serial_baudrate_))) {
+      RCLCPP_ERROR(this->get_logger(), "Error, cannot bind to the specified serial port '%s'.", serial_port_.c_str());
+      RPlidarDriver::DisposeDriver(m_drv);
+      return;
+    }
+  }
+
+  // get rplidar device info
+  if (!getRPLIDARDeviceInfo()) {
+    /* don't continue */
+    RPlidarDriver::DisposeDriver(m_drv);
+    return;
+  }
+
+  // check health...
+  if (!checkRPLIDARHealth()) {
+    RPlidarDriver::DisposeDriver(m_drv);
+    return;
+  }
+
+  /* start motor */
+  m_drv->startMotor();
+
+  /* TODO(allenh1): set scan mode */
+
+  /* done setting up RPLIDAR stuff, now set up ROS 2 stuff */
+
   /* set QoS settings */
   rmw_qos_profile_t qos = rmw_qos_profile_default;
   qos.depth = 1;
@@ -66,13 +119,17 @@ rplidar_node::rplidar_node(rclcpp::NodeOptions options)
   /* create the publisher for "/scan" */
   m_publisher = this->create_publisher<LaserScan>(topic_name_, qos);
 
-  RCLCPP_INFO(this->get_logger(),
-    "RPLIDAR running on ROS 2 package rplidar_ros. SDK Version: '%s'", RPLIDAR_SDK_VERSION);
+  /* create stop motor service */
+  m_stop_motor_service = this->create_service<std_srvs::srv::Empty>(
+    "stop_motor",
+    std::bind(&rplidar_node::stop_motor, this, std::placeholders::_1, std::placeholders::_2),
+    qos);
 
-  /* initialize SDK */
-  m_drv = (channel_type_ == "tcp")
-    ? RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_TCP)
-    : RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_SERIALPORT);
+  /* create start motor service */
+  m_start_motor_service = this->create_service<std_srvs::srv::Empty>(
+    "start_motor",
+    std::bind(&rplidar_node::start_motor, this, std::placeholders::_1, std::placeholders::_2),
+    qos);
 }
 
 void rplidar_node::publish_scan(
@@ -130,7 +187,7 @@ void rplidar_node::publish_scan(
 }
 
 
-bool rplidar_node::getRPLIDARDeviceInfo()
+bool rplidar_node::getRPLIDARDeviceInfo() const
 {
   u_result op_result;
   rplidar_response_device_info_t devinfo;
@@ -140,7 +197,7 @@ bool rplidar_node::getRPLIDARDeviceInfo()
     if (op_result == RESULT_OPERATION_TIMEOUT) {
       RCLCPP_ERROR(this->get_logger(), "Error, operation time out. RESULT_OPERATION_TIMEOUT!");
     } else {
-      RCLCPP_ERROR(this->get_logger(), "Error, unexpected error, code: %x", op_result);
+      RCLCPP_ERROR(this->get_logger(), "Error, unexpected error, code: '%x'", op_result);
     }
     return false;
   }
@@ -156,6 +213,45 @@ bool rplidar_node::getRPLIDARDeviceInfo()
   RCLCPP_INFO(this->get_logger(), "Firmware Ver: %d.%02d", devinfo.firmware_version>>8, devinfo.firmware_version & 0xFF);
   RCLCPP_INFO(this->get_logger(), "Hardware Rev: %d", static_cast<int>(devinfo.hardware_version));
   return true;
+}
+
+bool rplidar_node::checkRPLIDARHealth() const
+{
+  rplidar_response_device_health_t healthinfo;
+  u_result op_result = m_drv->getHealth(healthinfo);
+
+  if (IS_OK(op_result)) {
+    RCLCPP_INFO(this->get_logger(), "RPLidar health status : '%d'", healthinfo.status);
+    if (healthinfo.status == RPLIDAR_STATUS_ERROR) {
+      RCLCPP_ERROR(this->get_logger(), "Error, rplidar internal error detected. Please reboot the device to retry");
+      return false;
+    }
+    return true;
+  }
+  RCLCPP_ERROR(this->get_logger(), "Error, cannot retrieve rplidar health code: '%x'", op_result);
+  return false;
+}
+
+void rplidar_node::stop_motor(const EmptyRequest req, EmptyResponse res)
+{
+  if (nullptr == m_drv) {
+    return;
+  }
+
+  RCLCPP_DEBUG(this->get_logger(), "Call to '%s'", __FUNCTION__);
+  m_drv->stop();
+  m_drv->stopMotor();
+}
+
+void rplidar_node::start_motor(const EmptyRequest req, EmptyResponse res)
+{
+  if (nullptr == m_drv) {
+    return;
+  }
+
+  RCLCPP_DEBUG(this->get_logger(), "Call to '%s'", __FUNCTION__);
+  m_drv->startMotor();
+  m_drv->startScan(0,1);
 }
 
 }  // namespace rplidar_ros

@@ -55,9 +55,13 @@ namespace
 {
 using LaserScan = sensor_msgs::msg::LaserScan;
 using LaserScanPub = rclcpp::Publisher<LaserScan>::SharedPtr;
+using StartMotorService = rclcpp::Service<std_srvs::srv::Empty>::SharedPtr;
+using StopMotorService = rclcpp::Service<std_srvs::srv::Empty>::SharedPtr;
 using RPlidarDriver =  rp::standalone::rplidar::RPlidarDriver;
 using Clock = rclcpp::Clock::SharedPtr;
 using ResponseNodeArray = std::unique_ptr<rplidar_response_measurement_node_hq_t[]>;
+using EmptyRequest = std::shared_ptr<std_srvs::srv::Empty::Request>;
+using EmptyResponse = std::shared_ptr<std_srvs::srv::Empty::Response>;
 }
 
 namespace rplidar_ros
@@ -82,8 +86,13 @@ public:
 
   void publish_scan(const double scan_time, const ResponseNodeArray & nodes, size_t node_count);
 
+  /* service callbacks */
+  void stop_motor(const EmptyRequest req, EmptyResponse res);
+  void start_motor(const EmptyRequest req, EmptyResponse res);
+
 private:
-  bool getRPLIDARDeviceInfo();
+  bool getRPLIDARDeviceInfo() const;
+  bool checkRPLIDARHealth() const;
 
   /* parameters */
   std::string channel_type_;
@@ -99,6 +108,9 @@ private:
   std::string scan_mode_;
   /* Publisher */
   LaserScanPub m_publisher;
+  /* Services */
+  StopMotorService m_stop_motor_service;
+  StartMotorService m_start_motor_service;
   /* SDK Pointer */
   RPlidarDriver * m_drv = nullptr;
   /* Clock */
