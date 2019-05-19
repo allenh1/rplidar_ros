@@ -102,7 +102,10 @@ rplidar_node::rplidar_node(rclcpp::NodeOptions options)
   /* start motor */
   m_drv->startMotor();
 
-  /* TODO(allenh1): set scan mode */
+  if (!set_scan_mode()) {
+    /* set the scan mode */
+    return;
+  }
 
   /* done setting up RPLIDAR stuff, now set up ROS 2 stuff */
 
@@ -130,10 +133,12 @@ rplidar_node::rplidar_node(rclcpp::NodeOptions options)
     "start_motor",
     std::bind(&rplidar_node::start_motor, this, std::placeholders::_1, std::placeholders::_2),
     qos);
+  /* start timer */
+  m_timer = this->create_wall_timer(10ms, std::bind(&rplidar_node::publish_loop, this));
 }
 
 void rplidar_node::publish_scan(
-  const double scan_time, const ResponseNodeArray & nodes, size_t node_count)
+  const double scan_time, ResponseNodeArray nodes, size_t node_count)
 {
   static size_t scan_count = 0;
   sensor_msgs::msg::LaserScan scan_msg;
@@ -143,8 +148,8 @@ void rplidar_node::publish_scan(
   scan_msg.header.frame_id = frame_id_;
   scan_count++;
 
-  constexpr bool reversed = (angle_max > angle_min);
-  if constexpr (reversed) {
+  bool reversed = (angle_max > angle_min);
+  if (reversed) {
     /* NOTE(allenh1): the other case seems impossible? */
     scan_msg.angle_min =  M_PI - angle_max;
     scan_msg.angle_max =  M_PI - angle_min;
@@ -254,4 +259,119 @@ void rplidar_node::start_motor(const EmptyRequest req, EmptyResponse res)
   m_drv->startScan(0,1);
 }
 
+bool rplidar_node::set_scan_mode()
+{
+  u_result op_result;
+  RplidarScanMode current_scan_mode;
+  if (scan_mode_.empty()) {
+    op_result = m_drv->startScan(false /* not force scan */, true /* use typical scan mode */, 0, &current_scan_mode);
+  } else {
+    std::vector<RplidarScanMode> allSupportedScanModes;
+    op_result = m_drv->getAllSupportedScanModes(allSupportedScanModes);
+    if (IS_OK(op_result)) {
+      auto iter = std::find_if(allSupportedScanModes.begin(), allSupportedScanModes.end(),
+        [this](auto s1){
+          return s1.scan_mode == scan_mode_;
+      });
+      if (iter == allSupportedScanModes.end()) {
+        RCLCPP_ERROR(this->get_logger(), "scan mode `%s' is not supported by lidar, supported modes:", scan_mode_.c_str());
+        for (const auto & it : allSupportedScanModes) {
+          RCLCPP_ERROR(this->get_logger(), "\t%s: max_distance: %.1f m, Point number: %.1fK",
+                       it.scan_mode, it.max_distance, (1000 / it.us_per_sample));
+        }
+        op_result = RESULT_OPERATION_FAIL;
+      } else {
+        op_result = m_drv->startScanExpress(false /* not force scan */, iter->id, 0, &current_scan_mode);
+      }
+    }
+  }
+
+  /* verify we set the scan mode */
+  if(!IS_OK(op_result))
+  {
+    RCLCPP_ERROR(this->get_logger(), "Cannot start scan: '%08x'", op_result);
+    return false;
+  }
+
+  // default frequent is 10 hz (by motor pwm value),  current_scan_mode.us_per_sample is the number of scan point per us
+  m_angle_compensate_multiple = static_cast<int>(1000*1000/current_scan_mode.us_per_sample/10.0/360.0);
+  if (m_angle_compensate_multiple < 1) {
+    m_angle_compensate_multiple = 1;
+  }
+  max_distance = current_scan_mode.max_distance;
+  RCLCPP_INFO(this->get_logger(),
+    "current scan mode: %s, max_distance: %.1f m, Point number: %.1fK , angle_compensate: %d",  current_scan_mode.scan_mode,
+    current_scan_mode.max_distance, (1000/current_scan_mode.us_per_sample), m_angle_compensate_multiple);
+  return true;
+}
+
+void rplidar_node::publish_loop()
+{
+  rclcpp::Time start_scan_time;
+  rclcpp::Time end_scan_time;
+  u_result op_result;
+  size_t count = 360 * 8;
+  auto nodes = std::make_unique<rplidar_response_measurement_node_hq_t[]>(count);
+
+  start_scan_time = m_clock->now();
+  op_result = m_drv->grabScanDataHq(nodes.get(), count);
+  end_scan_time = m_clock->now();
+  double scan_duration = (end_scan_time - start_scan_time).nanoseconds() * 1E-9;
+
+  if (op_result != RESULT_OK) {
+    return;
+  }
+  op_result = m_drv->ascendScanData(nodes.get(), count);
+  angle_min = deg_2_rad(0.0f);
+  angle_max = deg_2_rad(359.0f);
+  if (op_result == RESULT_OK) {
+    if (angle_compensate_) {
+      //const int angle_compensate_multiple = 1;
+      const int angle_compensate_nodes_count = 360 * m_angle_compensate_multiple;
+      int angle_compensate_offset = 0;
+      rplidar_response_measurement_node_hq_t angle_compensate_nodes[angle_compensate_nodes_count];
+      memset(angle_compensate_nodes, 0, angle_compensate_nodes_count*sizeof(rplidar_response_measurement_node_hq_t));
+
+      size_t i = 0, j = 0;
+      for( ; i < count; i++ ) {
+        if (nodes[i].dist_mm_q2 != 0) {
+          float angle = getAngle(nodes[i]);
+          int angle_value = (int)(angle * m_angle_compensate_multiple);
+          if ((angle_value - angle_compensate_offset) < 0) angle_compensate_offset = angle_value;
+          for (j = 0; j < m_angle_compensate_multiple; j++) {
+            angle_compensate_nodes[angle_value-angle_compensate_offset+j] = nodes[i];
+          }
+        }
+      }
+
+      publish_scan(scan_duration, std::move(nodes), count);
+    } else {
+      int start_node = 0, end_node = 0;
+      int i = 0;
+      // find the first valid node and last valid node
+      while (nodes[i++].dist_mm_q2 == 0);
+      start_node = i-1;
+      i = count -1;
+      while (nodes[i--].dist_mm_q2 == 0);
+      end_node = i+1;
+
+      angle_min = deg_2_rad(getAngle(nodes[start_node]));
+      angle_max = deg_2_rad(getAngle(nodes[end_node]));
+
+      /* TODO(allenh): handle this case */
+      /* publish_scan(scan_duration, &nodes[start_node], end_node-start_node +1); */
+    }
+  } else if (op_result == RESULT_OPERATION_FAIL) {
+    // All the data is invalid, just publish them
+    float angle_min = deg_2_rad(0.0f);
+    float angle_max = deg_2_rad(359.0f);
+
+    publish_scan(scan_duration, std::move(nodes), count);
+  }
+}
+
 }  // namespace rplidar_ros
+
+#include "rclcpp_components/register_node_macro.hpp"
+
+RCLCPP_COMPONENTS_REGISTER_NODE(rplidar_ros::rplidar_node)
