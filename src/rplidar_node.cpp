@@ -39,7 +39,7 @@ namespace rplidar_ros
 {
 
 rplidar_node::rplidar_node(rclcpp::NodeOptions options)
-  : rclcpp::Node("rplidar_node", options)
+: rclcpp::Node("rplidar_node", options)
 {
   /* set parameters */
   this->get_parameter_or("channel_type", channel_type_, std::string("serial"));
@@ -57,9 +57,9 @@ rplidar_node::rplidar_node(rclcpp::NodeOptions options)
     "RPLIDAR running on ROS 2 package rplidar_ros. SDK Version: '%s'", RPLIDAR_SDK_VERSION);
 
   /* initialize SDK */
-  m_drv = (channel_type_ == "tcp")
-    ? RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_TCP)
-    : RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_SERIALPORT);
+  m_drv = (channel_type_ == "tcp") ?
+    RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_TCP) :
+    RPlidarDriver::CreateDriver(rp::standalone::rplidar::DRIVER_TYPE_SERIALPORT);
 
   if (nullptr == m_drv) {
     /* don't start spinning without a driver object */
@@ -67,7 +67,7 @@ rplidar_node::rplidar_node(rclcpp::NodeOptions options)
     return;
   }
 
-  if(channel_type_ == "tcp"){
+  if (channel_type_ == "tcp") {
     // make connection...
     if (IS_FAIL(m_drv->connect(tcp_ip_.c_str(), (_u32)tcp_port_))) {
       RCLCPP_ERROR(this->get_logger(),
@@ -76,11 +76,12 @@ rplidar_node::rplidar_node(rclcpp::NodeOptions options)
       RPlidarDriver::DisposeDriver(m_drv);
       return;
     }
-  }
-  else{
+  } else {
     // make connection...
     if (IS_FAIL(m_drv->connect(serial_port_.c_str(), (_u32)serial_baudrate_))) {
-      RCLCPP_ERROR(this->get_logger(), "Error, cannot bind to the specified serial port '%s'.", serial_port_.c_str());
+      RCLCPP_ERROR(
+        this->get_logger(), "Error, cannot bind to the specified serial port '%s'.",
+        serial_port_.c_str());
       RPlidarDriver::DisposeDriver(m_drv);
       return;
     }
@@ -158,17 +159,17 @@ void rplidar_node::publish_scan(
   bool reversed = (angle_max > angle_min);
   if (reversed) {
     /* NOTE(allenh1): the other case seems impossible? */
-    scan_msg.angle_min =  M_PI - angle_max;
-    scan_msg.angle_max =  M_PI - angle_min;
+    scan_msg.angle_min = M_PI - angle_max;
+    scan_msg.angle_max = M_PI - angle_min;
   } else {
-    scan_msg.angle_min =  M_PI - angle_min;
-    scan_msg.angle_max =  M_PI - angle_max;
+    scan_msg.angle_min = M_PI - angle_min;
+    scan_msg.angle_max = M_PI - angle_max;
   }
   scan_msg.angle_increment =
-    (scan_msg.angle_max - scan_msg.angle_min) / (double)(node_count-1);
+    (scan_msg.angle_max - scan_msg.angle_min) / (double)(node_count - 1);
 
   scan_msg.scan_time = scan_time;
-  scan_msg.time_increment = scan_time / (double)(node_count-1);
+  scan_msg.time_increment = scan_time / (double)(node_count - 1);
   scan_msg.range_min = min_distance;
   scan_msg.range_max = max_distance;
 
@@ -177,21 +178,23 @@ void rplidar_node::publish_scan(
   bool reverse_data = (!inverted_ && reversed) || (inverted_ && !reversed);
   if (!reverse_data) {
     for (size_t i = 0; i < node_count; i++) {
-      float read_value = (float) nodes[i].dist_mm_q2/4.0f/1000;
-      if (read_value == 0.0)
+      float read_value = (float) nodes[i].dist_mm_q2 / 4.0f / 1000;
+      if (read_value == 0.0) {
         scan_msg.ranges[i] = std::numeric_limits<float>::infinity();
-      else
+      } else {
         scan_msg.ranges[i] = read_value;
+      }
       scan_msg.intensities[i] = (float) (nodes[i].quality >> 2);
     }
   } else {
     for (size_t i = 0; i < node_count; i++) {
-      float read_value = (float)nodes[i].dist_mm_q2/4.0f/1000;
-      if (read_value == 0.0)
-        scan_msg.ranges[node_count-1-i] = std::numeric_limits<float>::infinity();
-      else
-        scan_msg.ranges[node_count-1-i] = read_value;
-      scan_msg.intensities[node_count-1-i] = (float) (nodes[i].quality >> 2);
+      float read_value = (float)nodes[i].dist_mm_q2 / 4.0f / 1000;
+      if (read_value == 0.0) {
+        scan_msg.ranges[node_count - 1 - i] = std::numeric_limits<float>::infinity();
+      } else {
+        scan_msg.ranges[node_count - 1 - i] = read_value;
+      }
+      scan_msg.intensities[node_count - 1 - i] = (float) (nodes[i].quality >> 2);
     }
   }
 
@@ -216,13 +219,15 @@ bool rplidar_node::getRPLIDARDeviceInfo() const
 
   // print out the device serial number, firmware and hardware version number..
   std::string serial_no{"RPLIDAR S/N: "};
-  for (int pos = 0; pos < 16 ;++pos) {
+  for (int pos = 0; pos < 16; ++pos) {
     char buff[3];
     snprintf(buff, sizeof(buff), "%02X", devinfo.serialnum[pos]);
     serial_no += buff;
   }
   RCLCPP_INFO(this->get_logger(), "%s", serial_no.c_str());
-  RCLCPP_INFO(this->get_logger(), "Firmware Ver: %d.%02d", devinfo.firmware_version>>8, devinfo.firmware_version & 0xFF);
+  RCLCPP_INFO(
+    this->get_logger(), "Firmware Ver: %d.%02d", devinfo.firmware_version >> 8,
+    devinfo.firmware_version & 0xFF);
   RCLCPP_INFO(this->get_logger(), "Hardware Rev: %d", static_cast<int>(devinfo.hardware_version));
   return true;
 }
@@ -235,7 +240,9 @@ bool rplidar_node::checkRPLIDARHealth() const
   if (IS_OK(op_result)) {
     RCLCPP_INFO(this->get_logger(), "RPLidar health status : '%d'", healthinfo.status);
     if (healthinfo.status == RPLIDAR_STATUS_ERROR) {
-      RCLCPP_ERROR(this->get_logger(), "Error, rplidar internal error detected. Please reboot the device to retry");
+      RCLCPP_ERROR(
+        this->get_logger(),
+        "Error, rplidar internal error detected. Please reboot the device to retry");
       return false;
     }
     return true;
@@ -263,7 +270,7 @@ void rplidar_node::start_motor(const EmptyRequest req, EmptyResponse res)
 
   RCLCPP_DEBUG(this->get_logger(), "Call to '%s'", __FUNCTION__);
   m_drv->startMotor();
-  m_drv->startScan(0,1);
+  m_drv->startScan(0, 1);
 }
 
 bool rplidar_node::set_scan_mode()
@@ -271,44 +278,50 @@ bool rplidar_node::set_scan_mode()
   u_result op_result;
   RplidarScanMode current_scan_mode;
   if (scan_mode_.empty()) {
-    op_result = m_drv->startScan(false /* not force scan */, true /* use typical scan mode */, 0, &current_scan_mode);
+    op_result = m_drv->startScan(false /* not force scan */, true /* use typical scan mode */, 0,
+        &current_scan_mode);
   } else {
     std::vector<RplidarScanMode> allSupportedScanModes;
     op_result = m_drv->getAllSupportedScanModes(allSupportedScanModes);
     if (IS_OK(op_result)) {
       auto iter = std::find_if(allSupportedScanModes.begin(), allSupportedScanModes.end(),
-        [this](auto s1){
-          return s1.scan_mode == scan_mode_;
-      });
+          [this](auto s1) {
+            return s1.scan_mode == scan_mode_;
+          });
       if (iter == allSupportedScanModes.end()) {
-        RCLCPP_ERROR(this->get_logger(), "scan mode `%s' is not supported by lidar, supported modes:", scan_mode_.c_str());
+        RCLCPP_ERROR(
+          this->get_logger(), "scan mode `%s' is not supported by lidar, supported modes:",
+          scan_mode_.c_str());
         for (const auto & it : allSupportedScanModes) {
           RCLCPP_ERROR(this->get_logger(), "\t%s: max_distance: %.1f m, Point number: %.1fK",
-                       it.scan_mode, it.max_distance, (1000 / it.us_per_sample));
+            it.scan_mode, it.max_distance, (1000 / it.us_per_sample));
         }
         op_result = RESULT_OPERATION_FAIL;
       } else {
-        op_result = m_drv->startScanExpress(false /* not force scan */, iter->id, 0, &current_scan_mode);
+        op_result = m_drv->startScanExpress(false /* not force scan */, iter->id, 0,
+            &current_scan_mode);
       }
     }
   }
 
   /* verify we set the scan mode */
-  if(!IS_OK(op_result))
-  {
+  if (!IS_OK(op_result)) {
     RCLCPP_ERROR(this->get_logger(), "Cannot start scan: '%08x'", op_result);
     return false;
   }
 
   // default frequent is 10 hz (by motor pwm value),  current_scan_mode.us_per_sample is the number of scan point per us
-  m_angle_compensate_multiple = static_cast<int>(1000*1000/current_scan_mode.us_per_sample/10.0/360.0);
+  m_angle_compensate_multiple =
+    static_cast<int>(1000 * 1000 / current_scan_mode.us_per_sample / 10.0 / 360.0);
   if (m_angle_compensate_multiple < 1) {
     m_angle_compensate_multiple = 1;
   }
   max_distance = current_scan_mode.max_distance;
-  RCLCPP_INFO(this->get_logger(),
-    "current scan mode: %s, max_distance: %.1f m, Point number: %.1fK , angle_compensate: %d",  current_scan_mode.scan_mode,
-    current_scan_mode.max_distance, (1000/current_scan_mode.us_per_sample), m_angle_compensate_multiple);
+  RCLCPP_INFO(
+    this->get_logger(),
+    "current scan mode: %s, max_distance: %.1f m, Point number: %.1fK , angle_compensate: %d", current_scan_mode.scan_mode,
+    current_scan_mode.max_distance, (1000 / current_scan_mode.us_per_sample),
+    m_angle_compensate_multiple);
   return true;
 }
 
@@ -336,16 +349,17 @@ void rplidar_node::publish_loop()
       const int angle_compensate_nodes_count = 360 * m_angle_compensate_multiple;
       int angle_compensate_offset = 0;
       rplidar_response_measurement_node_hq_t angle_compensate_nodes[angle_compensate_nodes_count];
-      memset(angle_compensate_nodes, 0, angle_compensate_nodes_count * sizeof(rplidar_response_measurement_node_hq_t));
+      memset(angle_compensate_nodes, 0,
+        angle_compensate_nodes_count * sizeof(rplidar_response_measurement_node_hq_t));
 
       size_t i = 0, j = 0;
-      for( ; i < count; i++ ) {
+      for (; i < count; i++) {
         if (nodes[i].dist_mm_q2 != 0) {
           float angle = getAngle(nodes[i]);
           int angle_value = (int)(angle * m_angle_compensate_multiple);
-          if ((angle_value - angle_compensate_offset) < 0) angle_compensate_offset = angle_value;
+          if ((angle_value - angle_compensate_offset) < 0) {angle_compensate_offset = angle_value;}
           for (j = 0; j < m_angle_compensate_multiple; j++) {
-            angle_compensate_nodes[angle_value-angle_compensate_offset+j] = nodes[i];
+            angle_compensate_nodes[angle_value - angle_compensate_offset + j] = nodes[i];
           }
         }
       }
@@ -355,15 +369,16 @@ void rplidar_node::publish_loop()
       int start_node = 0, end_node = 0;
       int i = 0;
       // find the first valid node and last valid node
-      while (nodes[i++].dist_mm_q2 == 0);
-      start_node = i-1;
-      i = count -1;
-      while (nodes[i--].dist_mm_q2 == 0);
-      end_node = i+1;
+      while (nodes[i++].dist_mm_q2 == 0) {}
+      start_node = i - 1;
+      i = count - 1;
+      while (nodes[i--].dist_mm_q2 == 0) {}
+      end_node = i + 1;
 
       angle_min = deg_2_rad(getAngle(nodes[start_node]));
       angle_max = deg_2_rad(getAngle(nodes[end_node]));
-      auto valid = std::make_unique<rplidar_response_measurement_node_hq_t[]>(end_node - start_node + 1);
+      auto valid = std::make_unique<rplidar_response_measurement_node_hq_t[]>(
+        end_node - start_node + 1);
       for (size_t x = start_node, y = 0; x < end_node; ++x, ++y) {
         valid[y] = nodes[x];
       }
