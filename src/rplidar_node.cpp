@@ -134,7 +134,14 @@ rplidar_node::rplidar_node(rclcpp::NodeOptions options)
     std::bind(&rplidar_node::start_motor, this, std::placeholders::_1, std::placeholders::_2),
     qos);
   /* start timer */
-  m_timer = this->create_wall_timer(10ms, std::bind(&rplidar_node::publish_loop, this));
+  m_timer = this->create_wall_timer(1ms, std::bind(&rplidar_node::publish_loop, this));
+}
+
+rplidar_node::~rplidar_node()
+{
+  m_drv->stop();
+  m_drv->stopMotor();
+  RPlidarDriver::DisposeDriver(m_drv);
 }
 
 void rplidar_node::publish_scan(
@@ -326,11 +333,10 @@ void rplidar_node::publish_loop()
   angle_max = deg_2_rad(359.0f);
   if (op_result == RESULT_OK) {
     if (angle_compensate_) {
-      //const int angle_compensate_multiple = 1;
       const int angle_compensate_nodes_count = 360 * m_angle_compensate_multiple;
       int angle_compensate_offset = 0;
       rplidar_response_measurement_node_hq_t angle_compensate_nodes[angle_compensate_nodes_count];
-      memset(angle_compensate_nodes, 0, angle_compensate_nodes_count*sizeof(rplidar_response_measurement_node_hq_t));
+      memset(angle_compensate_nodes, 0, angle_compensate_nodes_count * sizeof(rplidar_response_measurement_node_hq_t));
 
       size_t i = 0, j = 0;
       for( ; i < count; i++ ) {
@@ -357,9 +363,11 @@ void rplidar_node::publish_loop()
 
       angle_min = deg_2_rad(getAngle(nodes[start_node]));
       angle_max = deg_2_rad(getAngle(nodes[end_node]));
-
-      /* TODO(allenh): handle this case */
-      /* publish_scan(scan_duration, &nodes[start_node], end_node-start_node +1); */
+      auto valid = std::make_unique<rplidar_response_measurement_node_hq_t[]>(end_node - start_node + 1);
+      for (size_t x = start_node, y = 0; x < end_node; ++x, ++y) {
+        valid[y] = nodes[x];
+      }
+      publish_scan(scan_duration, std::move(valid), end_node - start_node + 1);
     }
   } else if (op_result == RESULT_OPERATION_FAIL) {
     // All the data is invalid, just publish them

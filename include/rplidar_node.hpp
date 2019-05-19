@@ -82,10 +82,10 @@ static float getAngle(const rplidar_response_measurement_node_hq_t& node)
     return node.angle_z_q14 * 90.f / 16384.f;
 }
 
-class rplidar_node : public rclcpp::Node
+class RPLIDAR_ROS_PUBLIC rplidar_node : public rclcpp::Node
 {
 public:
-  RPLIDAR_ROS_PUBLIC explicit rplidar_node(rclcpp::NodeOptions options);
+  explicit rplidar_node(rclcpp::NodeOptions options);
   virtual ~rplidar_node();
 
   void publish_scan(const double scan_time, ResponseNodeArray nodes, size_t node_count);

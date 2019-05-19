@@ -49,9 +49,13 @@ ament_target_dependencies(rplidarNode ${req_deps})
 ament_auto_add_executable(rplidarNodeClient src/client.cpp)
 ament_target_dependencies(rplidarNodeClient ${req_deps})
 
+# build composition node
+ament_auto_add_executable(rplidar_composition src/standalone_rplidar.cpp)
+target_link_libraries(rplidar_composition rplidar_composition_node)
+ament_target_dependencies(rplidar_composition ${req_deps})
 
 install(
-  TARGETS rplidarNode rplidarNodeClient
+  TARGETS rplidarNode rplidarNodeClient rplidar_composition
   DESTINATION lib/${PROJECT_NAME}
 )
 
