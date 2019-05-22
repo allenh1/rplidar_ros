@@ -214,13 +214,8 @@ int main(int argc, char * argv[]) {
     // ros::NodeHandle nh;
     // auto scan_pub = nh.advertise<sensor_msgs::msg::LaserScan>("scan", 1000);
 
-    /* set up the QOS settings */
-    rmw_qos_profile_t qos = rmw_qos_profile_default;
-    qos.depth = 1;
-    qos.durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
-
     /* scan publisher */
-    auto scan_pub = node->create_publisher<sensor_msgs::msg::LaserScan>("scan", qos);
+    auto scan_pub = node->create_publisher<sensor_msgs::msg::LaserScan>("scan", rclcpp::SensorDataQoS());
 
     channel_type = node->declare_parameter("channel_type", std::string("serial"));
     tcp_ip = node->declare_parameter("tcp_ip", std::string("192.168.0.7"));
@@ -282,15 +277,11 @@ int main(int argc, char * argv[]) {
 
     // create stop motor service
     auto stop_motor_service = node->create_service<std_srvs::srv::Empty>(
-        "stop_motor",
-        std::bind(stop_motor, std::placeholders::_1, std::placeholders::_2),
-        qos);
+        "stop_motor", std::bind(stop_motor, std::placeholders::_1, std::placeholders::_2));
 
     // create start motor service
     auto start_motor_service = node->create_service<std_srvs::srv::Empty>(
-        "start_motor",
-        std::bind(start_motor, std::placeholders::_1, std::placeholders::_2),
-        qos);
+        "start_motor", std::bind(start_motor, std::placeholders::_1, std::placeholders::_2));
 
     drv->startMotor();
 
