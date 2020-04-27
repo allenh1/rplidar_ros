@@ -274,17 +274,18 @@ bool rplidar_node::set_scan_mode()
     if (IS_OK(op_result)) {
       auto iter = std::find_if(allSupportedScanModes.begin(), allSupportedScanModes.end(),
           [this](auto s1) {
-            return s1.scan_mode == scan_mode_;
+            return std::string(s1.scan_mode) == scan_mode_;
           });
       if (iter == allSupportedScanModes.end()) {
         RCLCPP_ERROR(
-          this->get_logger(), "scan mode `%s' is not supported by lidar, supported modes:",
-          scan_mode_.c_str());
+          this->get_logger(), "scan mode `%s' is not supported by lidar, supported modes ('%zd'):",
+          scan_mode_.c_str(), allSupportedScanModes.size());
         for (const auto & it : allSupportedScanModes) {
-          RCLCPP_ERROR(this->get_logger(), "\t%s: max_distance: %.1f m, Point number: %.1fK",
+          RCLCPP_ERROR(this->get_logger(), "%s: max_distance: %.1f m, Point number: %.1fK",
             it.scan_mode, it.max_distance, (1000 / it.us_per_sample));
         }
         op_result = RESULT_OPERATION_FAIL;
+        return false;
       } else {
         op_result = m_drv->startScanExpress(false /* not force scan */, iter->id, 0,
             &current_scan_mode);
