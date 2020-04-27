@@ -105,7 +105,10 @@ rplidar_node::rplidar_node(const rclcpp::NodeOptions & options)
 
   if (!set_scan_mode()) {
     /* set the scan mode */
-    return;
+    m_drv->stop();
+    m_drv->stopMotor();
+    RPlidarDriver::DisposeDriver(m_drv);
+    exit(1);
   }
 
   /* done setting up RPLIDAR stuff, now set up ROS 2 stuff */
