@@ -1,21 +1,20 @@
-from launch import LaunchDescription
+from ament_index_python.packages import get_package_share_directory
 from launch_ros.actions import Node
+from os import path
+
+from launch import LaunchDescription
 
 
 def generate_launch_description():
     return LaunchDescription([
         Node(
-            node_name='rplidar_composition',
+            node_name='rplidar',
             package='rplidar_ros',
-            node_executable='rplidar_composition',
+            node_executable='rplidar',
             output='screen',
-            parameters=[{
-                'channel_type': 'tcp',
-                'tcp_ip': '192.168.0.7',
-                'tcp_port': 20108,
-                'frame_id': 'laser',
-                'inverted': False,
-                'angle_compensate': True,
-            }]
+            parameters=[
+                path.join(get_package_share_directory('rplidar_ros'), 'config',
+                          'rplidar_tcp.yaml')
+            ],
         ),
     ])

@@ -126,7 +126,7 @@ Thread::priority_val_t Thread::getPriority()
     return PRIORITY_NORMAL;
 }
 
-u_result Thread::join(unsigned long timeout)
+u_result Thread::join(unsigned long)
 {
     if (!this->_handle) return RESULT_OK;
     

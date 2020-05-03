@@ -1,0 +1,8 @@
+rplidar:
+  ros__parameters:
+    serial_port: /dev/ttyUSB0
+    tcp_ip: '192.168.0.6'
+    tcp_port: 20108
+    frame_id: laser_frame
+    inverted: false
+    angle_compensate: true

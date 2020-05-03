@@ -94,7 +94,7 @@ bool raw_serial::bind(const char * portname, uint32_t baudrate, uint32_t flags)
     return true;
 }
 
-bool raw_serial::open(const char * portname, uint32_t baudrate, uint32_t flags)
+bool raw_serial::open(const char * portname, uint32_t baudrate, uint32_t)
 {
     if (isOpened()) close();
     
@@ -278,18 +278,18 @@ int raw_serial::recvdata(unsigned char * data, size_t size)
 }
 
 
-void raw_serial::flush( _u32 flags)
+void raw_serial::flush( _u32)
 {
     tcflush(serial_fd,TCIFLUSH); 
 }
 
-int raw_serial::waitforsent(_u32 timeout, size_t * returned_size)
+int raw_serial::waitforsent(_u32, size_t * returned_size)
 {
     if (returned_size) *returned_size = required_tx_cnt;
     return 0;
 }
 
-int raw_serial::waitforrecv(_u32 timeout, size_t * returned_size)
+int raw_serial::waitforrecv(_u32, size_t * returned_size)
 {
     if (!isOpened() ) return -1;
    
@@ -364,7 +364,7 @@ int raw_serial::waitfordata(size_t data_count, _u32 timeout, size_t * returned_s
             }
 
             // data avaliable
-            assert (FD_ISSET(serial_fd, &input_set));
+            assert (FD_ISSET(serial_fd, &input_set))
 
 
             if ( ioctl(serial_fd, FIONREAD, returned_size) == -1) return ANS_DEV_ERR;

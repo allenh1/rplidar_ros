@@ -33,6 +33,9 @@
  */
 
 #pragma once
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wall"
+#pragma GCC diagnostic ignored "-Wpedantic"
 
 #include "rplidar_protocol.h"
 
@@ -295,3 +298,4 @@ typedef struct _rplidar_response_device_health_t {
 #if defined(_WIN32)
 #pragma pack()
 #endif
+#pragma GCC diagnostic pop

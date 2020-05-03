@@ -6,6 +6,9 @@
  *  POXIS Implementation
  */
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wextra"
+#pragma GCC diagnostic ignored "-Wsign-compare"
 
 #include "sdkcommon.h"
 #include "../../hal/socket.h"
@@ -851,6 +854,7 @@ DGramSocket * DGramSocket::CreateSocket(SocketBase::socket_family_t family)
 
 }
 
-
 }}
+#pragma GCC diagnostic pop
+
 

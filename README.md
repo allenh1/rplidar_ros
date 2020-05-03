@@ -16,7 +16,7 @@ rplidar Tutorial:  https://github.com/robopeak/rplidar_ros/wiki
 How to build rplidar ros package
 =====================================================================
     1) Clone this project to your catkin's workspace src folder
-    2) Running catkin_make to build rplidarNode and rplidarNodeClient
+    2) Running catkin_make to build rplidarNode and rplidar_client
 
 How to run rplidar ros package
 =====================================================================
@@ -40,7 +40,7 @@ roslaunch rplidar_ros rplidar_a3.launch (for RPLIDAR A3)
 or
 roslaunch rplidar_ros rplidar_s1.launch (for RPLIDAR S1)
 
-rosrun rplidar_ros rplidarNodeClient
+rosrun rplidar_ros rplidar_client
 
 You should see rplidar's scan result in the console
 

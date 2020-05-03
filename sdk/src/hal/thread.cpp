@@ -32,6 +32,8 @@
  *
  */
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
 #include "sdkcommon.h"
 #include "hal/thread.h"
 
@@ -45,4 +47,4 @@
 #error no threading implemention found for this platform.
 #endif
 
-
+#pragma GCC diagnostic push

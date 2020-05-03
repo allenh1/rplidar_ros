@@ -1,0 +1,7 @@
+rplidar:
+  ros__parameters:
+    serial_port: /dev/ttyUSB0
+    serial_baudrate: 256000
+    frame_id: laser_frame
+    inverted: false
+    angle_compensate: true

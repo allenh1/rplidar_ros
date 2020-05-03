@@ -33,6 +33,9 @@
  */
 
 #pragma once
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wall"
+#pragma GCC diagnostic ignored "-Wpedantic"
 
 // RP-Lidar Input Packets
 
@@ -70,3 +73,4 @@ typedef struct _rplidar_ans_header_t {
 #if defined(_WIN32)
 #pragma pack()
 #endif
+#pragma GCC diagnostic pop
