@@ -16,8 +16,8 @@ Changelog for package rplidar_ros
 * [improvement] Print warning messages when deprecated APIs are called; imporve angular accuracy for ultra capsuled scan points
 * Contributors: tony,kint
 
-Forthcoming
------------
+2.0.0 (2020-07-15)
+------------------
 * Update SDK to Version 0.12.0 (`#14 <https://github.com/allenh1/rplidar_ros/issues/14>`_)
   * Register the rclcpp component
   * Update RPLIDAR SDK to version 1.12.0
