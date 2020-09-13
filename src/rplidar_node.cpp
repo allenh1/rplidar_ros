@@ -169,25 +169,25 @@ void rplidar_node::publish_scan(
   scan_msg.ranges.resize(node_count);
   bool reverse_data = (!inverted_ && reversed) || (inverted_ && !reversed);
   size_t scan_midpoint = node_count / 2;
-  for (size_t i = 0; i < node_count; i++) {
-      float read_value = (float) nodes[i].dist_mm_q2 / 4.0f / 1000;
-      size_t apply_index = i;
-      if (reverse_data) {
-          apply_index = node_count - 1 - i;
-      }
-      if (flip_x_axis_) {
-          if (apply_index >= scan_midpoint) {
-              apply_index = apply_index-scan_midpoint;
-          } else {
-              apply_index = apply_index + scan_midpoint;
-          }
-      }
-      if (read_value == 0.0) {
-          scan_msg.ranges[apply_index] = std::numeric_limits<float>::infinity();
+  for (size_t i = 0; i < node_count; ++i) {
+    float read_value = (float) nodes[i].dist_mm_q2 / 4.0f / 1000;
+    size_t apply_index = i;
+    if (reverse_data) {
+      apply_index = node_count - 1 - i;
+    }
+    if (flip_x_axis_) {
+      if (apply_index >= scan_midpoint) {
+        apply_index = apply_index-scan_midpoint;
       } else {
-          scan_msg.ranges[apply_index] = read_value;
+        apply_index = apply_index + scan_midpoint;
       }
-      scan_msg.intensities[apply_index] = (float) (nodes[i].quality >> 2);
+    }
+    if (read_value == 0.0) {
+      scan_msg.ranges[apply_index] = std::numeric_limits<float>::infinity();
+    } else {
+      scan_msg.ranges[apply_index] = read_value;
+    }
+    scan_msg.intensities[apply_index] = (float) (nodes[i].quality >> 2);
   }
 
   m_publisher->publish(scan_msg);
