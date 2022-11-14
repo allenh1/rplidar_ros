@@ -82,10 +82,32 @@ rplidar_node::rplidar_node(const rclcpp::NodeOptions & options)
     }
   } else {
     // make connection...
-    if (IS_FAIL(m_drv->connect(serial_port_.c_str(), (_u32)serial_baudrate_))) {
+    uint32_t connect_status = m_drv->connect(serial_port_.c_str(), (_u32)serial_baudrate_);
+    if (IS_FAIL(connect_status)) {
       RCLCPP_ERROR(
         this->get_logger(), "Error, cannot bind to the specified serial port '%s'.",
         serial_port_.c_str());
+
+      std::string reason = "";
+
+      switch(connect_status) {
+	      case RESULT_ALREADY_DONE:
+		      reason = "ALREADY DONE";
+		      break;
+	      case RESULT_INSUFFICIENT_MEMORY:
+		      reason = "INSUFFICIENT MEMORY"; 
+		      break;
+	      case RESULT_INVALID_DATA:
+		      reason = "INVALID DATA";
+		      break;
+	      default:
+		      reason = "UNKNOWN";
+      }
+
+      RCLCPP_ERROR(
+        this->get_logger(), "Because '%s'.",
+        reason.c_str());
+
       RPlidarDriver::DisposeDriver(m_drv);
       return;
     }
