@@ -31,6 +31,7 @@
 #define RPLIDAR_NODE_HPP_
 
 #include <rclcpp/clock.hpp>
+#include <rclcpp/qos.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/time.hpp>
 #include <rclcpp/time_source.hpp>
