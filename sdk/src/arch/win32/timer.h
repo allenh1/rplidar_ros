@@ -3,7 +3,7 @@
  *
  *  Copyright (c) 2009 - 2014 RoboPeak Team
  *  http://www.robopeak.com
- *  Copyright (c) 2014 - 2019 Shanghai Slamtec Co., Ltd.
+ *  Copyright (c) 2014 - 2020 Shanghai Slamtec Co., Ltd.
  *  http://www.slamtec.com
  *
  */
@@ -40,8 +40,10 @@
 
 namespace rp{ namespace arch{
     void HPtimer_reset();
-    _u32 getHDTimer();
+    _u64 getHDTimer();
+    _u64 getHDTimer_us();
+
 }}
 
 #define getms()   rp::arch::getHDTimer()
-
+#define getus()   rp::arch::getHDTimer_us()

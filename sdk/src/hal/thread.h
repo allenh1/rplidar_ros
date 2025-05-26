@@ -3,7 +3,7 @@
  *
  *  Copyright (c) 2009 - 2014 RoboPeak Team
  *  http://www.robopeak.com
- *  Copyright (c) 2014 - 2019 Shanghai Slamtec Co., Ltd.
+ *  Copyright (c) 2014 - 2020 Shanghai Slamtec Co., Ltd.
  *  http://www.slamtec.com
  *
  */
@@ -72,8 +72,15 @@ public:
     u_result terminate();
     void *getData() { return _data;}
     u_result join(unsigned long timeout = -1);
-	u_result setPriority( priority_val_t p);
+	
+    // disabled as on platforms like Linux, the priority will be inherited by the child thread
+    // which may caused unexpected behavior.
+    // Please using Thread::SetSelfPriority instead
+    // u_result setPriority( priority_val_t p);
 	priority_val_t getPriority();
+
+    static u_result SetSelfPriority(priority_val_t p);
+
 
     bool operator== ( const Thread & right) { return this->_handle == right._handle; }
 protected:

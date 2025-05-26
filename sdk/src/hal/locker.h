@@ -3,7 +3,7 @@
  *
  *  Copyright (c) 2009 - 2014 RoboPeak Team
  *  http://www.robopeak.com
- *  Copyright (c) 2014 - 2019 Shanghai Slamtec Co., Ltd.
+ *  Copyright (c) 2014 - 2020 Shanghai Slamtec Co., Ltd.
  *  http://www.slamtec.com
  *
  */
@@ -45,11 +45,11 @@ public:
         LOCK_FAILED = 0
     };
 
-    Locker(){
+    Locker(bool recusive = false){
 #ifdef _WIN32
         _lock = NULL;
 #endif
-        init();
+        init(recusive);
     }
 
     ~Locker()
@@ -117,7 +117,11 @@ public:
     void unlock()
     {
 #ifdef _WIN32
-        ReleaseMutex(_lock);
+        if (_recusive) {
+            ReleaseMutex(_lock);
+        } else {
+            ReleaseSemaphore(_lock, 1, NULL);
+        }
 #else
         pthread_mutex_unlock(&_lock);
 #endif
@@ -138,12 +142,25 @@ public:
 
 
 protected:
-    void    init()
+    void    init(bool recusive)
     {
+        
 #ifdef _WIN32
-        _lock = CreateMutex(NULL,FALSE,NULL);
+        if (_recusive = recusive) {
+            _lock = CreateMutex(NULL, FALSE, NULL);
+        } else {
+            _lock = CreateSemaphore(NULL, 1, 1, NULL);
+        }
 #else
-        pthread_mutex_init(&_lock, NULL);
+        
+        if (recusive) {
+            pthread_mutexattr_t attr;
+            pthread_mutexattr_init(&attr);
+            pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+            pthread_mutex_init(&_lock, &attr);
+        } else {
+            pthread_mutex_init(&_lock, NULL);
+        }
 #endif
     }
 
@@ -161,9 +178,11 @@ protected:
 
 #ifdef _WIN32
     HANDLE  _lock;
+    bool _recusive;
 #else
     pthread_mutex_t _lock;
 #endif
+    
 };
 
 class AutoLocker
