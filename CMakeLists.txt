@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9.5)
+cmake_minimum_required(VERSION 3.10)
 project(rplidar_ros)
 
 # Default to C++14
@@ -49,13 +49,14 @@ add_library(rplidar_composition_node SHARED
   src/rplidar_node.cpp
   ${RPLIDAR_SDK_SRC}
 )
-ament_target_dependencies(rplidar_composition_node ${req_deps})
+#ament_target_dependencies(rplidar_composition_node ${req_deps})
+target_link_libraries(rplidar_composition_node rclcpp::rclcpp sensor_msgs::sensor_msgs std_srvs::std_srvs rclcpp_components::component)
 rclcpp_components_register_nodes(rplidar_composition_node "rplidar_ros::rplidar_node")
 
 # build composition node
 ament_auto_add_executable(rplidar_composition src/standalone_rplidar.cpp)
-target_link_libraries(rplidar_composition rplidar_composition_node)
-ament_target_dependencies(rplidar_composition ${req_deps})
+target_link_libraries(rplidar_composition rplidar_composition_node rclcpp::rclcpp sensor_msgs::sensor_msgs std_srvs::std_srvs rclcpp_components::component) 
+# ament_target_dependencies(rplidar_composition ${req_deps})
 
 install(
   TARGETS rplidar_composition
